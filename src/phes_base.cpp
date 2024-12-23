@@ -6,6 +6,7 @@
 #include <shapefil.h>
 #include <string>
 
+// Function to convert a double to an int with rounding
 int convert_to_int(double f)
 {
 	if(f>=0)
@@ -14,6 +15,7 @@ int convert_to_int(double f)
 		return (int) (f-0.5);
 }
 
+// Function to find the maximum value in a vector of doubles
 double max(vector<double> a)
 {
 	double amax = -1.0e20;
@@ -23,16 +25,19 @@ double max(vector<double> a)
 	return amax;
 }
 
+// Function to convert dam height and length to volume
 double convert_to_dam_volume(int height, double length)
 {
 	return (((height+freeboard)*(cwidth+dambatter*(height+freeboard)))/1000000)*length;
 }
 
+// Overloaded function to convert dam height and length to volume
 double convert_to_dam_volume(double height, double length)
 {
 	return (((height+freeboard)*(cwidth+dambatter*(height+freeboard)))/1000000)*length;
 }
 
+// Function to perform linear interpolation
 double linear_interpolate(double value, vector<double> x_values, vector<double> y_values)
 {
 	uint i = 0;
@@ -50,6 +55,7 @@ double linear_interpolate(double value, vector<double> x_values, vector<double> 
 	return (ylower+(y_values[i]-ylower)*(value-xlower)/r);
 }
 
+// Function to convert an integer to a string
 string str(int i)
 {
 	char buf[32];
@@ -58,6 +64,7 @@ string str(int i)
 	return to_return;
 }
 
+// Function to get the current wall time in microseconds
 unsigned long walltime_usec()
 {
 	struct timeval now;
@@ -65,11 +72,13 @@ unsigned long walltime_usec()
 	return (1000000*now.tv_sec + now.tv_usec);
 }
 
+// Function to find the required volume based on energy and head
 double find_required_volume(int energy, int head)
 {
 	return (((double)(energy)*J_GWh_conversion)/((double)(head)*water_density*gravity*generation_efficiency*usable_volume*cubic_metres_GL_conversion));
 }
 
+// Function to convert a string to a char array (with memory leak)
 char* convert_string(const string& str){
   // NUKE THIS, mem leak galore
 	char *c = new char[str.length() + 1];
@@ -77,12 +86,14 @@ char* convert_string(const string& str){
 	return c;
 }
 
+// Function to convert a double to a string with a specified number of decimal places
 string dtos(double f, int nd) {
 	stringstream ss;
 	ss << fixed << std::setprecision(nd) << f;
 	return ss.str();
 }
 
+// Function to read DEM data with borders
 Model<short>* read_DEM_with_borders(GridSquare sc, int border){
 	Model<short>* DEM = new Model<short>(0, 0, MODEL_UNSET);
 	const int neighbors[9][4][2] = {
@@ -123,6 +134,7 @@ Model<short>* read_DEM_with_borders(GridSquare sc, int border){
 	return DEM;
 }
 
+// Function to initialize a BigModel structure
 
 BigModel BigModel_init(GridSquare sc){
 	BigModel big_model;
@@ -151,14 +163,17 @@ BigModel BigModel_init(GridSquare sc){
 	return big_model;
 }
 
+// Function to calculate the cost of a power house
 double calculate_power_house_cost(double power, double head){
 	return powerhouse_coeff*pow(MIN(power,800),(power_exp))/pow(head,head_exp);
 }
 
+// Function to calculate the cost of a tunnel
 double calculate_tunnel_cost(double power, double head, double seperation){
 	return ((power_slope_factor*MIN(power,800)+slope_int)*pow(head,head_coeff)*seperation*1000)+(power_offset*MIN(power,800)+tunnel_fixed);
 }
 
+// Function to set the Figure of Merit (FOM) for a pair of reservoirs
 void set_FOM(Pair* pair){
 	double seperation = pair->distance;
 	double head = (double)pair->head;
@@ -194,6 +209,7 @@ void set_FOM(Pair* pair){
 	}
 }
 
+// Function to convert energy capacity to a string
 string energy_capacity_to_string(double energy_capacity){
 	if(energy_capacity<10-EPS)
 		return dtos(energy_capacity,1);
@@ -201,20 +217,24 @@ string energy_capacity_to_string(double energy_capacity){
 		return to_string(convert_to_int(energy_capacity));
 }
 
+// Function to convert a Test structure to a string
 string str(Test test){
 	return energy_capacity_to_string(test.energy_capacity)+"GWh_"+to_string(test.storage_time)+"h";
 }
 
+// Function to check if a file exists (using char* as input)
 bool file_exists (char* name) {
 	ifstream infile(name);
     return infile.good();
 }
 
+// Function to check if a file exists (using string as input)
 bool file_exists (string name) {
 	ifstream infile(name.c_str());
     return infile.good();
 }
 
+// Function to get the origin of a geographic coordinate with a border
 
 GeographicCoordinate get_origin(double latitude, double longitude, int border){
 	return GeographicCoordinate_init(FLOOR(latitude)+1+(border/3600.0),FLOOR(longitude)-(border/3600.0));
@@ -223,45 +243,55 @@ GeographicCoordinate get_origin(double latitude, double longitude, int border){
 ExistingReservoir get_existing_reservoir(string name, string filename) {
   ExistingReservoir to_return;
   int i = 0;
+  // If filename is empty, set it to the default path
   if (filename.empty())
     filename = file_storage_location + "input/existing_reservoirs/" + existing_reservoirs_csv;
+  // Check if the file exists
   if(!file_exists(convert_string(filename))){
     cout << "File " << filename << " does not exist." << endl;
     throw 1;
   }
 
+  // If using tiled bluefield data
   if (use_tiled_bluefield) {
     DBFHandle DBF = DBFOpen(convert_string(filename), "rb");
     int dbf_field = DBFGetFieldIndex(DBF, string("Vol_total").c_str());
     int dbf_elevation_field = DBFGetFieldIndex(DBF, string("Elevation").c_str());
     int dbf_name_field = DBFGetFieldIndex(DBF, string("Lake_name").c_str());
+    // Loop through DBF records to find the reservoir by name
     for (i = 0; i<DBFGetRecordCount(DBF); i++){
       const char* s = DBFReadStringAttribute(DBF, i, dbf_name_field);
       if(name==string(s)){
         break;
       }
     }
+    // If the reservoir is not found, throw an error
     if(i==DBFGetRecordCount(DBF)){
       cout<<"Could not find reservoir with name " << name << " in " << filename << endl;
       throw 1;
     }
+    // Initialize the reservoir with the found attributes
     to_return = ExistingReservoir_init(name, 0, 0, DBFReadIntegerAttribute(DBF, i, dbf_elevation_field), DBFReadDoubleAttribute(DBF, i, dbf_field));
     DBFClose(DBF);
   } else {
+    // Read existing reservoir data from the file
     vector<ExistingReservoir> reservoirs = read_existing_reservoir_data(convert_string(filename));
 
     bool found = false;
+    // Loop through the reservoirs to find the one with the matching name
     for (ExistingReservoir r : reservoirs)
       if (r.identifier == name){
         found = true;
         to_return = r;
         break;
       }
+    // If the reservoir is not found, throw an error
     if(!found){
       cout<<"Could not find reservoir with name " << name << " in " << filename << endl;
       throw 1;
     }
 
+    // Loop through the names to find the index of the matching name
     for (string s : read_names(convert_string(file_storage_location + "input/existing_reservoirs/" +
                                               existing_reservoirs_shp_names))) {
       if (s == name)
@@ -271,6 +301,7 @@ ExistingReservoir get_existing_reservoir(string name, string filename) {
     }
   }
 
+  // Check if the shapefile exists
   if (!file_exists(filename)) {
     search_config.logger.debug("No file: " + filename);
     throw(1);
@@ -287,6 +318,7 @@ ExistingReservoir get_existing_reservoir(string name, string filename) {
               i);
       throw(1);
     }
+    // Loop through the vertices of the shape to create the polygon
     for (int j = 0; j < shape->nVertices; j++) {
       // if(shape->panPartStart[iPart] == j )
       //  break;
@@ -301,15 +333,19 @@ ExistingReservoir get_existing_reservoir(string name, string filename) {
   }
   SHPClose(SHP);
 
+  // Calculate the area of the polygon
   to_return.area = geographic_polygon_area(to_return.polygon);
 
   return to_return;
 }
 
 ExistingReservoir get_existing_tiled_reservoir(string name, double lat, double lon) {
+  // Initialize the grid square based on latitude and longitude
   GridSquare grid_square = GridSquare_init(convert_to_int(lat-0.5), convert_to_int(lon-0.5));
+  // Construct the filename for the shapefile tile
   string filename = file_storage_location + "input/bluefield_shapefile_tiles/" +
                       str(grid_square) + "_shapefile_tile.shp";
+  // Get the existing reservoir from the tile
   return get_existing_reservoir(name, filename);
 }
 
@@ -319,6 +355,7 @@ vector<ExistingReservoir> get_existing_reservoirs(GridSquare grid_square) {
   vector<string> names;
   vector<ExistingReservoir> reservoirs;
 
+  // Add filenames based on the configuration
   if (use_tiled_rivers) {
     filenames.push_back(file_storage_location + "input/river_shapefile_tiles/" + str(grid_square) +
                         "_shapefile_tile.shp");
@@ -343,6 +380,7 @@ vector<ExistingReservoir> get_existing_reservoirs(GridSquare grid_square) {
                         existing_reservoirs_shp);
   }
 
+  // Loop through the filenames to read the shapefiles and DBF files
   for (string filename : filenames) {
     if (!file_exists(filename)) {
       search_config.logger.error("No file: " + filename);
@@ -367,6 +405,7 @@ vector<ExistingReservoir> get_existing_reservoirs(GridSquare grid_square) {
       int nEntities;
       SHPGetInfo(SHP, &nEntities, NULL, NULL, NULL);
 
+      // Loop through the entities in the shapefile
       for (int i = 0; i < nEntities; i++) {
         SHPObject *shape;
         shape = SHPReadObject(SHP, i);
@@ -376,6 +415,7 @@ vector<ExistingReservoir> get_existing_reservoirs(GridSquare grid_square) {
           ExistingReservoir reservoir;
           if (csv_names) {
             int idx = -1;
+            // Find the reservoir by name
             for (uint r = 0; r < reservoirs.size(); r++) {
               if (reservoirs[r].identifier == names[i]) {
                 idx = r;
@@ -397,6 +437,7 @@ vector<ExistingReservoir> get_existing_reservoirs(GridSquare grid_square) {
             reservoir = ExistingReservoir_init(name, 0, 0, 0, volume);
             reservoir.river = true;
           }
+          // Loop through the vertices of the shape to create the polygon
           for (int j = 0; j < shape->nVertices; j++) {
             // if(shape->panPartStart[iPart] == j )
             //  break;
@@ -452,6 +493,7 @@ RoughBfieldReservoir existing_reservoir_to_rough_reservoir(ExistingReservoir r) 
   reservoir.longitude = r.longitude;
   reservoir.elevation = r.elevation;
   reservoir.bottom_elevation = r.elevation;
+  // Loop through dam wall heights and initialize reservoir properties
   for (uint i = 0; i < dam_wall_heights.size(); i++) {
     reservoir.volumes.push_back(r.volume);
     reservoir.dam_volumes.push_back(0);

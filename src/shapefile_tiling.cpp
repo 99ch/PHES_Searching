@@ -3,6 +3,7 @@
 #include <shapefil.h>
 #include <vector>
 
+// Set to store unique names
 set<string> names;
 
 // Reads a list of cells to process from the tasks_file (Eg. 148 -36)
@@ -28,8 +29,10 @@ vector<GridSquare> read_tasklist(char *tasks_file) {
   return tasklist;
 }
 
+// Define the shape type as polygon
 int SHAPE_TYPE = SHPT_POLYGON;
 
+// Structure to represent a shape
 struct Shape {
   vector<GeographicCoordinate> points;
   explicit Shape(vector<GeographicCoordinate> &points) : points(points){};
@@ -51,23 +54,28 @@ int main(int argc, char *argv[]) {
   std::cout << "Tiling started for " << type << std::endl;
   printf("Tiling started\n");
 
+  // Parse variables from configuration files
   parse_variables(convert_string("storage_location"));
   parse_variables(convert_string(file_storage_location + "variables"));
   unsigned long start_usec = walltime_usec();
 
+  // Read the task list
   vector<GridSquare> tasklist = read_tasklist(convert_string(file_storage_location + tasks_file));
 
+  // Initialize models for relevant polygons and to_keep flags
   Model<vector<int>> *relevant_polygons = new Model<vector<int>>(180, 360);
   Model<bool> *to_keep = new Model<bool>(180, 360, MODEL_SET_ZERO);
   vector<Shape> shapes;
   int iterator = 0;
 
+  // Determine shapefile names based on type
   vector<string> shapefile_names;
   if (type == "FILTER")
     shapefile_names = filter_filenames_to_tile;
   else
     shapefile_names.push_back("input/existing_reservoirs/" + existing_reservoirs_shp);
 
+  // Process each shapefile
   for (string filename : shapefile_names) {
     SHPHandle SHP = SHPOpen(convert_string(file_storage_location + filename), "rb");
     DBFHandle DBF = DBFOpen(convert_string(file_storage_location + filename), "rb");
@@ -102,6 +110,7 @@ int main(int argc, char *argv[]) {
         }
         vector<GeographicCoordinate> temp_poly;
 
+        // Process each part of the shape
         for (int iPart = 0; iPart < SHP_shape->nParts; iPart++) {
           for (int j = 0; j < SHP_shape->nVertices && (iPart == SHP_shape->nParts - 1 ||
                                                        j < SHP_shape->panPartStart[iPart + 1]);
@@ -118,6 +127,7 @@ int main(int argc, char *argv[]) {
                 to_keep->set(lat + 90, lon + 180, false);
               }
 
+          // Create a shape and set its properties based on type
           Shape shape = Shape(temp_poly);
           if (type == "RIVER") {
             shape.volume = flow;
@@ -151,12 +161,15 @@ int main(int argc, char *argv[]) {
     SHPClose(SHP);
   }
 
+  // Set output location based on type
   string output_location = file_storage_location + "input/shapefile_tiles";
   if (type == "RIVER")
     output_location = file_storage_location + "input/river_shapefile_tiles";
   if (type == "BLUEFIELD")
     output_location = file_storage_location + "input/bluefield_shapefile_tiles";
   mkdir(convert_string(output_location), 0777);
+
+  // Process each grid square in the task list
   for (GridSquare gs : tasklist) {
     int lat = gs.lat;
     int lon = gs.lon;
@@ -180,6 +193,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    // Write shapes to the shapefile
     for (uint ipolygon = 0; ipolygon < relevant_polygons->get(lat + 90, lon + 180).size();
          ipolygon++) {
       Shape shape = shapes[relevant_polygons->get(lat + 90, lon + 180)[ipolygon]];
@@ -217,6 +231,7 @@ int main(int argc, char *argv[]) {
     DBFClose(DBF);
   }
 
+  // Clean up
   delete to_keep;
   delete relevant_polygons;
 

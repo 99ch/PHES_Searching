@@ -2,8 +2,10 @@
 #include "constructor_helpers.hpp"
 #include "kml.h"
 
+// Vector to store pairs of reservoirs
 vector<vector<Pair>> pairs;
 
+// Function to model an existing reservoir
 bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* coordinates, vector<vector<vector<GeographicCoordinate>>>& countries, vector<string>& country_names){
   if(!reservoir->river){
     ExistingReservoir r;
@@ -32,6 +34,7 @@ bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* c
     return true;
 }
 
+// Function to model a pair of reservoirs
 bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
                 bool *non_overlap, int max_FOM, BigModel big_model,
                 Model<char> *full_cur_model,
@@ -41,6 +44,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   vector<ArrayCoordinate> used_points;
   *non_overlap = true;
 
+  // Model the upper reservoir
   if (pair->upper.brownfield) {
     if (!model_existing_reservoir(&pair->upper, &pair_kml->upper, countries,
                                   country_names))
@@ -50,6 +54,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
                               countries, country_names))
     return false;
 
+  // Model the lower reservoir
   if (pair->lower.brownfield) {
     if (!model_existing_reservoir(&pair->lower, &pair_kml->lower, countries,
                                   country_names))
@@ -62,6 +67,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
 
   pair->country = pair->upper.country;
 
+  // Calculate the distance and slope between the reservoirs
   ArrayCoordinate upper_closest_point = pair->upper.pour_point;
   ArrayCoordinate lower_closest_point = pair->lower.pour_point;
   double mindist = find_distance(upper_closest_point, lower_closest_point);
@@ -83,6 +89,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
     return false;
   }
 
+  // Update the seen model and KML data
   if (*non_overlap) {
     for (uint i = 0; i < used_points.size(); i++) {
       seen->set(used_points[i].row, used_points[i].col, true);
@@ -110,13 +117,16 @@ int main(int nargs, char **argv)
     parse_variables(convert_string(file_storage_location+"variables"));
     unsigned long t_usec = walltime_usec();
 
+    // Read pairs data from CSV file
     pairs = read_rough_pair_data(convert_string(file_storage_location+"processing_files/pretty_set_pairs/"+search_config.filename()+"_rough_pretty_set_pairs_data.csv"));
 
+    // Create output directories
     mkdir(convert_string(file_storage_location+"output/final_output_classes"), 0777);
     mkdir(convert_string(file_storage_location+"output/final_output_classes/"+search_config.filename()),0777);
     mkdir(convert_string(file_storage_location+"output/final_output_FOM"), 0777);
     mkdir(convert_string(file_storage_location+"output/final_output_FOM/"+search_config.filename()),0777);
 
+    // Open CSV files for writing summary data
     FILE *total_csv_file_classes = fopen(convert_string(file_storage_location+"output/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_total.csv"), "w");
     write_summary_csv_header(total_csv_file_classes);
     FILE *total_csv_file_FOM = fopen(convert_string(file_storage_location+"output/final_output_FOM/"+search_config.filename()+"/"+search_config.filename()+"_total.csv"), "w");
@@ -148,6 +158,7 @@ int main(int nargs, char **argv)
     vector<string> country_names;
     vector<vector<vector<GeographicCoordinate>>> countries = read_countries(file_storage_location+"input/countries/countries.txt", country_names);
 
+    // Initialize models for seen and full current model
     Model<bool>* seen = new Model<bool>(big_model.DEM->nrows(), big_model.DEM->nrows(), MODEL_SET_ZERO);
     seen->set_geodata(big_model.DEM->get_geodata());
     Model<char>* full_cur_model = new Model<char>(big_model.DEM->nrows(), big_model.DEM->ncols(), MODEL_SET_ZERO);

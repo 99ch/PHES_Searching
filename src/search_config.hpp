@@ -8,19 +8,26 @@
 
 class SearchType {
   public:
+    // Enum for different search types
     enum type {GREENFIELD, OCEAN, SINGLE_EXISTING, BULK_EXISTING, BULK_PIT, SINGLE_PIT};
+    // Constructor to initialize search type
     constexpr SearchType(type search_type) : value(search_type){}
+    // Operator to return the search type
     constexpr operator type() const { return value; }
 
+    // Check if the search type is for existing reservoirs
     bool existing(){
       return value == SINGLE_EXISTING || value == BULK_EXISTING || value == BULK_PIT || value == SINGLE_PIT;
     }
+    // Check if the search type is not for existing reservoirs
     bool not_existing(){
       return value == GREENFIELD || value == OCEAN;
     }
+    // Check if the search type is for grid cells
     bool grid_cell(){
       return value == GREENFIELD || value == OCEAN || value == BULK_EXISTING || value == BULK_PIT;
     }
+    // Check if the search type is for a single reservoir
     bool single(){
       return value == SINGLE_EXISTING || value == SINGLE_PIT;
     }
@@ -56,52 +63,68 @@ class SearchType {
     }
 
   private:
+    // Variable to store the search type
     type value;
 };
 
+// Class to handle logging
 class Logger {
   public:
+    // Enum for logging levels
     enum level {DEBUG, ERROR};
+    // Constructor to initialize logging level
     constexpr Logger(level logging_level) : logging_level(logging_level){}
+    // Constructor to initialize logging level from a character
     Logger(char* c){
       if (atoi(c))
         logging_level = DEBUG;
       else
         logging_level = ERROR;
     }
+    // Operator to return the logging level
     constexpr operator level() const { return logging_level; }
 
+    // Log an error message
     void error(std::string message){
       std::cout << message << std::endl;
     }
 
+    // Check if debug output is enabled
     bool output_debug(){
       return logging_level == DEBUG;
     }
 
+    // Log a debug message
     void debug(std::string message){
       if (this->output_debug())
         std::cout << message << std::endl;
     }
+    // Log a warning message
     void warning(std::string message){
       if (this->output_debug())
         std::cout << message << std::endl;
     }
 
   private:
+    // Variable to store the logging level
     level logging_level = DEBUG;
 };
 
+// Function to format a string for use as a filename
 string format_for_filename(string s);
 
+// Class to handle search configuration
 class SearchConfig {
   public:
+    // Variables to store search type, grid square, name, and logger
     SearchType search_type;
     GridSquare grid_square;
     std::string name;
     Logger logger;
 
+    // Default constructor
     SearchConfig() : search_type(SearchType::GREENFIELD), logger(Logger::ERROR){}
+    // Constructor to initialize search configuration from command line arguments
     SearchConfig(int nargs, char **argv) : search_type(SearchType::GREENFIELD), logger(Logger::ERROR) {
       std::string arg1(argv[1]);
       int adj = 0;
@@ -148,6 +171,7 @@ class SearchConfig {
       }
     }
 
+    // Get the filename based on the search type and name or grid square
     std::string filename(){
       if(search_type.grid_cell())
         return search_type.prefix() + str(grid_square);
@@ -155,6 +179,7 @@ class SearchConfig {
     }
 };
 
+// Declare global instance of SearchConfig
 extern SearchConfig search_config;
 
 #endif

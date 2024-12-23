@@ -1,5 +1,6 @@
 #include "kml.h"
 
+// KML start string with predefined styles
 string kml_start =
 "<kml xmlns=\"http://www.opengis.net/kml/2.2\">\n"
 "  <Document id=\"Layers\">\n"
@@ -29,10 +30,12 @@ string kml_start =
 "      </LabelStyle>\n"
 "    </Style>\n";
 
+// KML end string
 string kml_end =
 "  </Document>\n"
 "</kml>\n";
 
+// Function to generate HTML content for a reservoir
 string get_html(Reservoir* reservoir, Pair* pair){
 	string newline = "";
 	if(reservoir->pit){
@@ -93,6 +96,7 @@ string get_html(Reservoir* reservoir, Pair* pair){
 	}
 }
 
+// Function to generate HTML content for a pair
 string get_html(Pair* pair){
 	string newline = "";
 	return
@@ -119,6 +123,7 @@ string get_html(Pair* pair){
 "              </html>\n";
 }
 
+// Function to generate KML extended data attributes for a reservoir
 string get_attributes(Reservoir* reservoir, Pair* pair){
 	// if(reservoir->pit){
 		return
@@ -217,6 +222,7 @@ string get_attributes(Reservoir* reservoir, Pair* pair){
 // 	}
 }
 
+// Function to generate KML extended data attributes for a pair
 string get_attributes(Pair* pair){
 	return
 "        <ExtendedData>\n"
@@ -253,6 +259,7 @@ string get_attributes(Pair* pair){
 "       </ExtendedData>\n";
 }
 
+// Function to generate KML geometry for a reservoir
 
 string get_reservoir_geometry(Reservoir_KML_Coordinates coordinates){
 	return
@@ -267,6 +274,7 @@ string get_reservoir_geometry(Reservoir_KML_Coordinates coordinates){
 "        </MultiGeometry>\n";
 }
 
+// Function to generate KML geometry for a dam
 string get_dam_geometry(Reservoir_KML_Coordinates coordinates){
 	string to_return =
 "        <MultiGeometry>\n";
@@ -298,6 +306,7 @@ string get_dam_geometry(Reservoir_KML_Coordinates coordinates){
 "        </MultiGeometry>\n";
 }
 
+// Function to generate KML geometry for a line
 string get_line_geometry(string coordinates){
 	return
 "        <LineString>\n"
@@ -308,6 +317,7 @@ string get_line_geometry(string coordinates){
 "        </LineString>\n";
 }
 
+// Function to generate KML geometry for a point
 string get_point_geometry(string coordinates){
 	return
 "        <Point>\n"
@@ -315,6 +325,7 @@ string get_point_geometry(string coordinates){
 "        </Point>\n";
 }
 
+// Function to generate KML for a reservoir
 string get_reservoir_kml(Reservoir* reservoir, string colour, Reservoir_KML_Coordinates coordinates, Pair* pair){
   if(reservoir->river)
     return "";
@@ -337,6 +348,7 @@ string get_reservoir_kml(Reservoir* reservoir, string colour, Reservoir_KML_Coor
 "      </Placemark>\n";
 }
 
+// Function to generate KML for a dam
 string get_dam_kml(Reservoir* reservoir, Reservoir_KML_Coordinates coordinates){
 	return
 "      <Placemark>\n"
@@ -346,6 +358,7 @@ string get_dam_kml(Reservoir* reservoir, Reservoir_KML_Coordinates coordinates){
 "      </Placemark>\n";
 }
 
+// Function to generate KML for a line
 string get_line_kml(Pair* pair, string coordinates){
 	return
 "      <Placemark>\n"
@@ -360,12 +373,14 @@ string get_line_kml(Pair* pair, string coordinates){
 "      </Placemark>\n";
 }
 
+// Converts an integer to a two-digit hexadecimal string
 string hex(int c){
 	stringstream to_return;
 	to_return << setw(2) << setfill('0') << hex << c;
 	return to_return.str();
 }
 
+// Generates a color string based on the category
 string get_colour(char category){
 	int opacity = convert_to_int(good_colour[0]+(((category-'A')/4.0)*(bad_colour[0]-good_colour[0])));
 	int blue = convert_to_int(good_colour[1]+(((category-'A')/4.0)*(bad_colour[1]-good_colour[1])));
@@ -375,6 +390,7 @@ string get_colour(char category){
 	return to_return;
 }
 
+// Generates a scale string based on the category
 string get_scale(char category){
 	for(CategoryCutoff category_cutoff:category_cutoffs)
 		if(category==category_cutoff.category)
@@ -382,6 +398,7 @@ string get_scale(char category){
 	return "0";
 }
 
+// Generates KML for a point
 string get_point_kml(Pair* pair, string coordinates){
 	return
 "      <Placemark>\n"
@@ -405,6 +422,7 @@ string get_point_kml(Pair* pair, string coordinates){
 "      </Placemark>\n";
 }
 
+// Generates a KML folder with the given name and records
 string generate_folder(string name, vector<string> records){
 	string to_return =
 "    <Folder>\n"
@@ -415,6 +433,7 @@ string generate_folder(string name, vector<string> records){
 	return to_return;
 }
 
+// Generates the complete KML output
 string output_kml(KML_Holder* kml_holder, string square, Test test){
 	string to_return;
 	to_return+=kml_start;
@@ -428,6 +447,7 @@ string output_kml(KML_Holder* kml_holder, string square, Test test){
 	return to_return;
 }
 
+// Updates the KML holder with new data
 void update_kml_holder(KML_Holder* kml_holder, Pair* pair, Pair_KML* pair_kml, bool keep_upper, bool keep_lower){
 	kml_holder->points.push_back(get_point_kml(pair, pair_kml->point));
 	kml_holder->lines.push_back(get_line_kml(pair, pair_kml->line));

@@ -12,10 +12,12 @@
 #define MODEL_UNSET 0
 #define MODEL_SET_ZERO 1
 
+// Structure to hold geospatial data
 struct Geodata {
   double geotransform[6];
   char *geoprojection;
 
+  // Function to return the projection as a string
   string projection_str(){
     return to_string(geotransform[0]) + " " + to_string(geotransform[1]) + " " +
         to_string(geotransform[3]) + " " + to_string(geotransform[5]) + " " +
@@ -24,10 +26,12 @@ struct Geodata {
   }
 };
 
+// Structure to hold geographic coordinates
 struct GeographicCoordinate {
   double lat, lon;
 };
 
+// Structure to hold array coordinates
 struct ArrayCoordinate {
   int row, col;
   GeographicCoordinate origin;
@@ -35,16 +39,22 @@ struct ArrayCoordinate {
 
 #include "phes_base.h"
 
+// Template class for Model
 template <class T> class Model {
 public:
+  // Constructor to initialize model from a file
   Model(std::string filename, GDALDataType data_type);
+  // Function to write model data to a file
   void write(std::string filename, GDALDataType data_type);
+  // Function to print model data
   void print();
+  // Constructor to initialize model with rows and columns
   Model(int rows, int cols) {
     this->rows = rows;
     this->cols = cols;
     data = new T[rows * cols];
   }
+  // Constructor to initialize model with rows, columns, and zero flag
   Model(int rows, int cols, int zero) {
     this->rows = rows;
     this->cols = cols;
@@ -54,48 +64,65 @@ public:
       data = new T[rows * cols];
     }
   }
+  // Destructor to delete model data
   ~Model() { delete[] data; }
+  // Function to get the number of rows
   int nrows() { return rows; }
+  // Function to get the number of columns
   int ncols() { return cols; }
+  // Function to get the value at a specific row and column
   T get(int row, int col) { return data[row * cols + col]; }
+  // Function to get a pointer to the value at a specific row and column
   T *get_pointer(int row, int col) { return &data[row * cols + col]; }
+  // Function to set the value at a specific row and column
   void set(int row, int col, T value) { data[row * cols + col] = value; }
+  // Function to set all values in the model to a specific value
   void set(T value) {
     for (int row = 0; row < rows; row++)
       for (int col = 0; col < cols; col++)
         data[row * cols + col] = value;
   }
+  // Function to get the geodata
   Geodata get_geodata() { return geodata; }
+  // Function to set the geodata
   void set_geodata(Geodata geodata) { this->geodata = geodata; }
+  // Function to set the origin of the geodata
   void set_origin(double lat, double lon) {
     geodata.geotransform[0] = lon;
     geodata.geotransform[3] = lat;
   }
+  // Function to check if a specific row and column are within the model bounds
   bool check_within(int row, int col) {
     return (row >= 0 && col >= 0 && row < nrows() && col < ncols());
   }
+  // Function to check if a geographic coordinate is within the model bounds
   bool check_within(GeographicCoordinate &g) {
     return check_within(floor((g.lat - geodata.geotransform[3]) / geodata.geotransform[5]),
                         floor((g.lon - geodata.geotransform[0]) / geodata.geotransform[1]));
   }
+  // Function to get the value at a specific geographic coordinate
   T get(GeographicCoordinate g) {
     return get(floor((g.lat - geodata.geotransform[3]) / geodata.geotransform[5]),
                floor((g.lon - geodata.geotransform[0]) / geodata.geotransform[1]));
   }
+  // Function to set the value at a specific geographic coordinate
   void set(GeographicCoordinate &g, T value) {
     set(floor((g.lat - geodata.geotransform[3]) / geodata.geotransform[5]),
         floor((g.lon - geodata.geotransform[0]) / geodata.geotransform[1]), value);
   }
+  // Function to get the origin of the geodata
   GeographicCoordinate get_origin() {
     GeographicCoordinate to_return = {geodata.geotransform[3], geodata.geotransform[0]};
     return to_return;
   }
+  // Function to get the geographic coordinate at a specific row and column
   GeographicCoordinate get_coordinate(int row, int col) {
     GeographicCoordinate to_return = {
         geodata.geotransform[3] + ((double)row + 0.5) * geodata.geotransform[5],
         geodata.geotransform[0] + ((double)col + 0.5) * geodata.geotransform[1]};
     return to_return;
   }
+  // Function to get the corners of the model
   std::vector<GeographicCoordinate> get_corners() {
     std::vector<GeographicCoordinate> to_return = {get_origin(), get_coordinate(0, ncols()),
                                               get_coordinate(nrows(), ncols()),
@@ -103,6 +130,7 @@ public:
     return to_return;
   }
 
+  // Function to check if one coordinate flows to another
   bool flows_to(ArrayCoordinate c1, ArrayCoordinate c2);
 private:
   int rows;
@@ -111,6 +139,7 @@ private:
   Geodata geodata;
 };
 
+// Template function to initialize model from a file
 template <typename T> Model<T>::Model(std::string filename, GDALDataType data_type) {
   char *tif_filename = new char[filename.length() + 1];
   strcpy(tif_filename, filename.c_str());

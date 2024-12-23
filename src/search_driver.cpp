@@ -91,6 +91,7 @@ vector<string> read_processlist(char *processes_file)
 	return processlist;
 }
 
+// Writes a message to the logfile for the given process and worker ID
 void write_to_logfile(int id, string process, string message){
 	ofstream logfile;
   	logfile.open(file_storage_location+"debug1/"+process+"_logfiles/"+process+"_"+to_string(id), ios_base::app);
@@ -100,18 +101,22 @@ void write_to_logfile(int id, string process, string message){
 
 int main()
 {
+	// Parse variables from configuration files
 	parse_variables(convert_string("storage_location"));
 	parse_variables(convert_string(file_storage_location+"variables"));
 
+	// Read task and process lists
 	vector<string> tasklist = read_tasklist(convert_string(file_storage_location+tasks_file));
 	vector<string> processlist = read_processlist(convert_string(file_storage_location+processes_file));
 
+	// Iterate over each process
 	for (auto process : processlist) {
 		mkdir(convert_string(file_storage_location+"debug1"), 0770);
 		mkdir(convert_string(file_storage_location+"driver_files"), 0770);
 		int id = set_worker(process);
 		mkdir(convert_string(file_storage_location+"debug1/"+process+"_logfiles"), 0770);
 
+		// Iterate over each task
 		for(auto task : tasklist){
 			mkdir(convert_string(file_storage_location+"driver_files/lockfiles"), 0770);
 			string tasklockfile = file_storage_location+"driver_files/lockfiles/"+process+"_task_"+format_for_filename(task);
@@ -127,6 +132,7 @@ int main()
 			}
 			close(fds);
 			bool success = false;
+			// Retry the command up to 5 times if it fails
 			for(int i = 0; i<5; i++){
 				if(!system(convert_string("./bin/"+process+" "+task))){
 					success = true;

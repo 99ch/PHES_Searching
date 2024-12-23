@@ -7,6 +7,7 @@
 
 bool debug_output = false;
 
+// Function to read a TIFF filter and update the filter model based on a specific value
 void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_to_filter){
 	try{
 		Model<unsigned char>* tif_filter = new Model<unsigned char>(filename, GDT_Byte);
@@ -26,6 +27,7 @@ void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_t
 	}
 }
 
+// Function to find the UTM filename based on geographic coordinates
 string find_world_utm_filename(GeographicCoordinate point){
 	char clat = 'A'+floor((point.lat+96)/8);
 	if(clat>=73)clat++;
@@ -36,6 +38,7 @@ string find_world_utm_filename(GeographicCoordinate point){
 	return string(strlon)+string(1, clat);
 }
 
+// Function to read filters and update the filter model based on various filenames
 Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
 {
 	Model<bool>* filter = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
@@ -150,6 +153,7 @@ Model<double>* fill(Model<short>* DEM)
 	return DEM_filled_no_flat;
 }
 
+// Function to find ocean areas in a DEM model
 Model<bool>* find_ocean(Model<short>* DEM)
 {
 	Model<bool>* ocean = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
@@ -427,6 +431,7 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
                  Model<char> *flow_directions, Model<short> *DEM_filled,
                  Model<int> *flow_accumulation, Model<bool> *filter) {
   FILE *csv_file;
+  // Open the appropriate CSV file based on the search type
   if (search_config.search_type == SearchType::OCEAN)
     csv_file = fopen(convert_string(file_storage_location +
                                     "output/reservoirs/ocean_" +
@@ -437,13 +442,16 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
         fopen(convert_string(file_storage_location + "output/reservoirs/" +
                              str(square_coordinate) + "_reservoirs.csv"),
               "w");
+  // Check if the CSV file was opened successfully
   if (!csv_file) {
     cout << "Failed to open reservoir CSV file" << endl;
     exit(1);
   }
+  // Write the header for the CSV file
   write_rough_reservoir_csv_header(csv_file);
 
   FILE *csv_data_file;
+  // Open the appropriate CSV data file based on the search type
   if (search_config.search_type == SearchType::OCEAN)
     csv_data_file =
         fopen(convert_string(file_storage_location +
@@ -455,17 +463,21 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
         convert_string(file_storage_location + "processing_files/reservoirs/" +
                        str(square_coordinate) + "_reservoirs_data.csv"),
         "w");
+  // Check if the CSV data file was opened successfully
   if (!csv_file) {
     fprintf(stderr, "failed to open reservoir CSV data file\n");
     exit(1);
   }
+  // Write the header for the CSV data file
   write_rough_reservoir_data_header(csv_data_file);
 
   int i = 0;
   int count = 0;
+  // Create a new model for storing reservoir data
   Model<int> *model = new Model<int>(pour_points->nrows(), pour_points->ncols(),
                                      MODEL_SET_ZERO);
 
+  // If the search type is OCEAN, find the appropriate pour points and model reservoirs
   if (search_config.search_type == SearchType::OCEAN) {
     unique_ptr<ArrayCoordinate> pp(new ArrayCoordinate{-1, -1, get_origin(square_coordinate, border)});
     for (int row = border + 1; row < border + DEM_filled->nrows() - 2 * border - 1; row++)
@@ -479,6 +491,7 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
           pp->col = col;
         }
       }
+    // If a valid pour point is found, create a RoughBfieldReservoir and write to CSV
     if (pp->row>0) {
       RoughBfieldReservoir reservoir = RoughBfieldReservoir(RoughReservoir(*pp, 0));
       reservoir.identifier = str(square_coordinate) + "_OCEAN";
@@ -507,6 +520,7 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
       write_rough_reservoir_data(csv_data_file, &reservoir);
     }
   } else {
+    // For non-OCEAN search types, find the appropriate pour points and model reservoirs
     for (int row = border; row < border + DEM_filled->nrows() - 2 * border; row++)
       for (int col = border; col < border + DEM_filled->ncols() - 2 * border; col++) {
         if (!pour_points->get(row, col) || filter->get(row, col))
@@ -529,29 +543,37 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
         }
       }
   }
+  // Close the CSV files
   fclose(csv_file);
   fclose(csv_data_file);
   return count;
   }
 
 int main(int nargs, char **argv) {
+  // Initialize search configuration with command line arguments
   search_config = SearchConfig(nargs, argv);
   cout << "Screening started for " << search_config.filename() << endl;
 
+  // Register GDAL drivers
   GDALAllRegister();
+  // Parse variables from configuration files
   parse_variables(convert_string("storage_location"));
   parse_variables(convert_string(file_storage_location + "variables"));
   unsigned long start_usec = walltime_usec();
   unsigned long t_usec = start_usec;
 
+  // Create necessary directories for output and processing files
   mkdir(convert_string(file_storage_location + "output"), 0777);
   mkdir(convert_string(file_storage_location + "output/reservoirs"), 0777);
   mkdir(convert_string(file_storage_location + "processing_files"), 0777);
   mkdir(convert_string(file_storage_location + "processing_files/reservoirs"), 0777);
 
+  // Check if the search type is not existing
   if (search_config.search_type.not_existing()) {
+    // Read DEM with borders
     Model<short> *DEM = read_DEM_with_borders(search_config.grid_square, border);
 
+    // Output debug information if enabled
     if (search_config.logger.output_debug()) {
       printf("\nAfter border added:\n");
       DEM->print();
@@ -585,6 +607,7 @@ int main(int nargs, char **argv) {
       filter->write(file_storage_location+"debug/filter/"+str(search_config.grid_square)+"_filter.tif", GDT_Byte);
     }
 
+    // Fill DEM and convert to short model
     t_usec = walltime_usec();
     Model<double>* DEM_filled_no_flat = fill(DEM);
     DEM_filled = new Model<short>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
@@ -603,6 +626,7 @@ int main(int nargs, char **argv) {
       DEM_filled_no_flat->write(file_storage_location+"debug/DEM_filled/"+str(search_config.grid_square)+"_DEM_filled_no_flat.tif",GDT_Float64);
     }
 
+    // Calculate flow directions
     t_usec = walltime_usec();
     flow_directions = flow_direction(DEM_filled_no_flat);
     if (search_config.logger.output_debug()) {
@@ -617,6 +641,7 @@ int main(int nargs, char **argv) {
     mkdir(convert_string(file_storage_location+"processing_files/flow_directions"),0777);
     flow_directions->write(file_storage_location+"processing_files/flow_directions/"+str(search_config.grid_square)+"_flow_directions.tif",GDT_Byte);
 
+    // Calculate flow accumulation
     t_usec = walltime_usec();
     flow_accumulation = find_flow_accumulation(flow_directions, DEM_filled_no_flat);
     if (search_config.logger.output_debug()) {
@@ -630,6 +655,7 @@ int main(int nargs, char **argv) {
     }
     delete DEM_filled_no_flat;
 
+    // Find pour points based on search type
     if(search_config.search_type == SearchType::OCEAN){
       pour_points = find_ocean(DEM);
       if (search_config.logger.output_debug()) {
@@ -687,6 +713,7 @@ int main(int nargs, char **argv) {
 		printf(convert_string("Volume finding finished for "+str(search_config.grid_square)+". Runtime: %.2f sec\n"), 1.0e-6*(walltime_usec() - t_usec) );
 	}
 
+    // Open CSV files for output
     FILE *csv_file = fopen(convert_string(file_storage_location + "output/reservoirs/" +
                                           search_config.filename() + "_reservoirs.csv"),
                            "w");
@@ -710,6 +737,7 @@ int main(int nargs, char **argv) {
 
     vector<ExistingReservoir> existing_reservoirs;
 
+    // Get existing reservoirs based on search type
     if(search_config.search_type.single())
       existing_reservoirs.push_back(get_existing_reservoir(search_config.name));
     else
@@ -754,6 +782,7 @@ int main(int nargs, char **argv) {
       }
     }
 
+    // Close CSV files
     fclose(csv_file);
     fclose(csv_data_file);
     printf(convert_string("Screening finished for " + search_config.filename() +

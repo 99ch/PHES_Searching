@@ -3,6 +3,7 @@
 #include "phes_base.h"
 #include "reservoir.h"
 
+// Replaces all occurrences of 'from' with 'to' in the given string
 string ReplaceAll(string str, const string &from, const string &to) {
   size_t start_pos = 0;
   while ((start_pos = str.find(from, start_pos)) != string::npos) {
@@ -13,6 +14,7 @@ string ReplaceAll(string str, const string &from, const string &to) {
   return str;
 }
 
+// Writes a vector of strings to a CSV file
 void write_to_csv_file(FILE *csv_file, vector<string> cols) {
   for (uint i = 0; i < cols.size(); i++) {
     if (cols[i].find(',') != std::string::npos) {
@@ -28,10 +30,12 @@ void write_to_csv_file(FILE *csv_file, vector<string> cols) {
   fprintf(csv_file, "\n");
 }
 
+// Reads a line from a CSV file and splits it into a vector of strings
 vector<string> read_from_csv_file(string line) {
   return read_from_csv_file(line, ',');
 }
 
+// Reads a line from a CSV file with a specified delimiter and splits it into a vector of strings
 vector<string> read_from_csv_file(string line, char delimeter) {
   line.erase(remove(line.begin(), line.end(), '\n'), line.end());
   line.erase(remove(line.begin(), line.end(), '\r'), line.end());
@@ -51,6 +55,7 @@ vector<string> read_from_csv_file(string line, char delimeter) {
   return cols;
 }
 
+// Reads existing reservoir data from a CSV file
 vector<ExistingReservoir> read_existing_reservoir_data(const char *filename) {
   vector<ExistingReservoir> reservoirs;
   ifstream inputFile(filename);
@@ -74,6 +79,7 @@ vector<ExistingReservoir> read_existing_reservoir_data(const char *filename) {
   return reservoirs;
 }
 
+// Reads existing pit data from a CSV file
 vector<ExistingPit> read_existing_pit_data(char *filename) {
   vector<ExistingPit> pits;
   ifstream inputFile(filename);
@@ -109,6 +115,7 @@ vector<ExistingPit> read_existing_pit_data(char *filename) {
   return pits;
 }
 
+// Reads names from a CSV file
 vector<string> read_names(char *filename) {
   vector<string> names;
   ifstream inputFile(filename);
@@ -128,6 +135,7 @@ vector<string> read_names(char *filename) {
   return names;
 }
 
+// Writes the header for rough reservoir data to a CSV file
 void write_rough_reservoir_csv_header(FILE *csv_file) {
   vector<string> header = {"Identifier",         "Latitude",
                            "Longitude",          "Elevation (m)",
@@ -143,6 +151,7 @@ void write_rough_reservoir_csv_header(FILE *csv_file) {
   write_to_csv_file(csv_file, header);
 }
 
+// Writes the header for rough reservoir data with additional fields to a CSV file
 void write_rough_reservoir_data_header(FILE *csv_file) {
   vector<string> header = {"Identifier",         "Latitude",
                            "Longitude",          "Elevation (m)",
@@ -160,6 +169,7 @@ void write_rough_reservoir_data_header(FILE *csv_file) {
   write_to_csv_file(csv_file, header);
 }
 
+// Writes rough reservoir data to a CSV file
 void write_rough_reservoir_csv(FILE *csv_file, RoughReservoir reservoir) {
   vector<string> line = {reservoir.identifier,
                          dtos(reservoir.latitude, 4),
@@ -178,6 +188,7 @@ void write_rough_reservoir_csv(FILE *csv_file, RoughReservoir reservoir) {
   write_to_csv_file(csv_file, line);
 }
 
+// Writes rough reservoir data to a CSV file with additional fields
 void write_rough_reservoir_data(FILE *csv_file, RoughReservoir *reservoir) {
   vector<string> line = {reservoir->identifier,
                          dtos(reservoir->latitude, 5),
@@ -311,6 +322,7 @@ vector<unique_ptr<RoughReservoir>> read_rough_reservoir_data(char *filename) {
   return reservoirs;
 }
 
+// Writes the header for rough pair data to a CSV file
 void write_rough_pair_csv_header(FILE *csv_file) {
   vector<string> header = {"Pair Identifier",
                            "Upper Identifier",
@@ -340,6 +352,7 @@ void write_rough_pair_csv_header(FILE *csv_file) {
   write_to_csv_file(csv_file, header);
 }
 
+// Writes the header for rough pair data with additional fields to a CSV file
 void write_rough_pair_data_header(FILE *csv_file) {
   vector<string> header = {"Pair Identifier",
                            "Upper Identifier",
@@ -372,6 +385,7 @@ void write_rough_pair_data_header(FILE *csv_file) {
   write_to_csv_file(csv_file, header);
 }
 
+// Writes rough pair data to a CSV file
 void write_rough_pair_csv(FILE *csv_file, Pair *pair) {
   vector<string> line = {pair->identifier,
                          pair->upper.identifier,
@@ -434,6 +448,7 @@ void write_rough_pair_data(FILE *csv_file, Pair *pair) {
   write_to_csv_file(csv_file, line);
 }
 
+// Reads rough pair data from a CSV file
 vector<vector<Pair>> read_rough_pair_data(char *filename) {
   vector<vector<Pair>> pairs;
   for (uint i = 0; i < tests.size(); i++) {
@@ -511,6 +526,7 @@ vector<vector<Pair>> read_rough_pair_data(char *filename) {
   return pairs;
 }
 
+// Writes the header for pair data to a CSV file
 void write_pair_csv_header(FILE *csv_file, bool output_FOM) {
   vector<string> header = {"Pair Identifier",
                            "Class",
@@ -550,6 +566,7 @@ void write_pair_csv_header(FILE *csv_file, bool output_FOM) {
   write_to_csv_file(csv_file, header);
 }
 
+// Writes pair data to a CSV file
 void write_pair_csv(FILE *csv_file, Pair *pair, bool output_FOM) {
   vector<string> line = {
       pair->identifier,
@@ -602,6 +619,7 @@ void write_pair_csv(FILE *csv_file, Pair *pair, bool output_FOM) {
   write_to_csv_file(csv_file, line);
 }
 
+// Writes the header for summary data to a CSV file
 void write_summary_csv_header(FILE *csv_file) {
   vector<string> header = {"Grid Identifier", "Reservoir type",
                            "Non-overlapping paired sites",
@@ -610,6 +628,7 @@ void write_summary_csv_header(FILE *csv_file) {
   write_to_csv_file(csv_file, header);
 }
 
+// Writes summary data to a CSV file
 void write_summary_csv(FILE *csv_file, string square_name, string test,
                       int non_overlapping_sites, int num_sites,
                       int energy_capacity) {

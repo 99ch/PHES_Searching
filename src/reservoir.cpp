@@ -3,6 +3,7 @@ using namespace std;
 
 #include "phes_base.h"
 
+// Function to update the reservoir boundary based on the elevation above the pour point
 void update_reservoir_boundary(
     vector<array<ArrayCoordinate, directions.size()>> &dam_shape_bounds,
     ArrayCoordinate point, int elevation_above_pp) {
@@ -19,6 +20,7 @@ void update_reservoir_boundary(
   }
 }
 
+// Function to update the reservoir boundary without considering elevation
 void update_reservoir_boundary(
     vector<ArrayCoordinate> &dam_shape_bounds,
     ArrayCoordinate point) {
@@ -32,6 +34,7 @@ void update_reservoir_boundary(
   }
 }
 
+// Function to initialize an ExistingReservoir object
 ExistingReservoir ExistingReservoir_init(string identifier, double latitude,
                                          double longitude, int elevation,
                                          double volume) {
@@ -44,17 +47,20 @@ ExistingReservoir ExistingReservoir_init(string identifier, double latitude,
   return reservoir;
 }
 
+// Function to initialize an ExistingPit object
 ExistingPit ExistingPit_init(ExistingReservoir reservoir) {
   ExistingPit pit;
   pit.reservoir = reservoir;
   return pit;
 }
 
+// Function to get the grid square coordinate of an ExistingReservoir
 GridSquare get_square_coordinate(ExistingReservoir reservoir) {
   return GridSquare_init(convert_to_int(FLOOR(reservoir.latitude)),
                          convert_to_int(FLOOR(reservoir.longitude)));
 }
 
+// Function to initialize a Reservoir object
 Reservoir Reservoir_init(ArrayCoordinate pour_point, int elevation) {
   Reservoir reservoir;
   reservoir.brownfield = false;
