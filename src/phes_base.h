@@ -216,5 +216,5 @@ RoughBfieldReservoir existing_reservoir_to_rough_reservoir(ExistingReservoir r);
 vector<ExistingPit> get_pit_details(GridSquare grid_square);
 ExistingPit get_pit_details(string pitname);
 void depression_volume_finding(Model<short>* DEM);
-
+bool does_file_exist(const std::string& filename);
 #endif
