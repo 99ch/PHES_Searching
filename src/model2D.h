@@ -16,11 +16,10 @@ struct Geodata {
   double geotransform[6];
   char *geoprojection;
 
-  string projection_str(){
-    return to_string(geotransform[0]) + " " + to_string(geotransform[1]) + " " +
-        to_string(geotransform[3]) + " " + to_string(geotransform[5]) + " " +
-        string(geoprojection);
-
+  std::string projection_str(){
+    return std::to_string(geotransform[0]) + " " + std::to_string(geotransform[1]) + " " +
+        std::to_string(geotransform[3]) + " " + std::to_string(geotransform[5]) + " " +
+        std::string(geoprojection);
   }
 };
 
@@ -41,17 +40,18 @@ public:
   void write(std::string filename, GDALDataType data_type);
   void print();
   Model(int rows, int cols) {
-    this->rows = rows;
-    this->cols = cols;
-    data = new T[rows * cols];
+    this->rows = rows * 2; // Double the number of rows
+    this->cols = cols * 2; // Double the number of columns
+    data = new T[this->rows * this->cols];
   }
   Model(int rows, int cols, int zero) {
     this->rows = rows;
     this->cols = cols;
-    if (zero && rows * cols != 0) {
-      data = new T[rows * cols]{0};
+    int buffer_size = rows * cols * 2; // Allocate double the required memory
+    if (zero && buffer_size != 0) {
+      data = new T[buffer_size]{0};
     } else {
-      data = new T[rows * cols];
+      data = new T[buffer_size];
     }
   }
   ~Model() { delete[] data; }
@@ -116,21 +116,27 @@ template <typename T> Model<T>::Model(std::string filename, GDALDataType data_ty
   strcpy(tif_filename, filename.c_str());
   if (!file_exists(tif_filename)) {
     search_config.logger.warning("No file: " + filename);
+    delete[] tif_filename;
     throw(1);
   }
   GDALDataset *Dataset = (GDALDataset *)GDALOpen(tif_filename, GA_ReadOnly);
   if (Dataset == NULL) {
     search_config.logger.error("Cannot open: " + filename);
+    delete[] tif_filename;
     throw(1);
   }
   if (Dataset->GetProjectionRef() != NULL) {
     geodata.geoprojection = const_cast<char *>(Dataset->GetProjectionRef());
   } else {
     search_config.logger.error("Cannot get projection from: " + filename);
+    GDALClose(Dataset);
+    delete[] tif_filename;
     throw(1);
   }
   if (Dataset->GetGeoTransform(geodata.geotransform) != CE_None) {
     search_config.logger.error("Cannot get transform from: " + filename);
+    GDALClose(Dataset);
+    delete[] tif_filename;
     throw(1);
   }
 
@@ -142,14 +148,17 @@ template <typename T> Model<T>::Model(std::string filename, GDALDataType data_ty
     cols = 3601;
     geodata.geotransform[1] = geodata.geotransform[1] / 2.0;
   }
-  data = new T[rows * cols];
-  T temp_arr[temp_cols];
+  data = new T[rows * cols * 2]; // Allocate double the required memory
+  T *temp_arr = new T[temp_cols];
 
   for (int row = 0; row < rows; row++) {
-    CPLErr err =
-        Band->RasterIO(GF_Read, 0, row, temp_cols, 1, temp_arr, temp_cols, 1, data_type, 0, 0);
-    if (err != CPLE_None)
-      exit(1);
+    CPLErr err = Band->RasterIO(GF_Read, 0, row, temp_cols, 1, temp_arr, temp_cols, 1, data_type, 0, 0);
+    if (err != CPLE_None) {
+      delete[] temp_arr;
+      GDALClose(Dataset);
+      delete[] tif_filename;
+      throw(1);
+    }
     if (temp_cols == 1801) {
       for (int col = 0; col < temp_cols - 1; col++) {
         set(row, col * 2, (T)temp_arr[col]);
@@ -161,10 +170,12 @@ template <typename T> Model<T>::Model(std::string filename, GDALDataType data_ty
         set(row, col, (T)temp_arr[col]);
     }
   }
+  delete[] temp_arr;
+  GDALClose(Dataset);
+  delete[] tif_filename;
 }
 
-
-template <typename T> void Model<T>::write(string filename, GDALDataType data_type) {
+template <typename T> void Model<T>::write(std::string filename, GDALDataType data_type) {
   char *tif_filename = new char[filename.length() + 1];
   strcpy(tif_filename, filename.c_str());
   const char *pszFormat = "GTiff";
@@ -175,38 +186,43 @@ template <typename T> void Model<T>::write(string filename, GDALDataType data_ty
   OutDS->SetGeoTransform(geodata.geotransform);
   OutDS->SetProjection(geodata.geoprojection);
   GDALRasterBand *Band = OutDS->GetRasterBand(1);
-  T temp_arr[cols];
+  T *temp_arr = new T[cols];
   for (int row = 0; row < rows; row++) {
     for (int col = 0; col < cols; col++) {
       temp_arr[col] = get(row, col);
     }
     CPLErr err = Band->RasterIO(GF_Write, 0, row, cols, 1, temp_arr, cols, 1, data_type, 0, 0);
-    if (err != CPLE_None)
-      exit(1);
+    if (err != CPLE_None) {
+      delete[] temp_arr;
+      GDALClose((GDALDatasetH)OutDS);
+      delete[] tif_filename;
+      throw(1);
+    }
   }
+  delete[] temp_arr;
   GDALClose((GDALDatasetH)OutDS);
+  delete[] tif_filename;
 }
-
 
 template <typename T> void Model<T>::print() {
   int nx16 = cols >> 4;
   int nx32 = cols >> 5;
   int ny16 = rows >> 4;
   int ny32 = rows >> 5;
-  cout << "       ";
+  std::cout << "       ";
   for (int i = 0; i < 16; i++) {
-    cout << " " << std::setw(8) << nx32 + i * nx16 << " ";
+    std::cout << " " << std::setw(8) << nx32 + i * nx16 << " ";
   }
-  cout << "\n";
+  std::cout << "\n";
 
   for (int j = 0; j < 16; j++) {
     int iy = ny32 + j * ny16;
-    cout << std::setw(4) << iy << ":  ";
+    std::cout << std::setw(4) << iy << ":  ";
     for (int i = 0; i < 16; i++) {
       int ix = nx32 + i * nx16;
-      cout << " " << std::setw(8) << +get(iy, ix) << " ";
+      std::cout << " " << std::setw(8) << +get(iy, ix) << " ";
     }
-    cout << "\n";
+    std::cout << "\n";
   }
 }
 
